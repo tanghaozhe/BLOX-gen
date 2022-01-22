@@ -87,7 +87,6 @@ def recommend_next(prediction_model, features_observed, features_unchecked, prop
     sc_property.fit(properties_observed)
     sc_properties_observed = sc_property.transform(properties_observed)
 
-    # 根据不同物性建造不同的model
     model_list = []
     for d in range(2):
         model = build_model(prediction_model, sc_features_observed, properties_observed[:, d])
