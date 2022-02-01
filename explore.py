@@ -1,19 +1,12 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import pandas as pd
 import urllib.request 
 from rdkit import Chem, rdBase
 from rdkit.Chem import AllChem, Draw, Descriptors, PandasTools,MolFromSmiles
 from rdkit.ML.Descriptors import MoleculeDescriptors
-from sklearn.model_selection import train_test_split
-import matplotlib
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from multiprocessing import Pool
-import copy as cp
-import random
 from sklearn.model_selection import GridSearchCV
 import sys
 sys.path.append("./ChemGE")
@@ -38,11 +31,21 @@ for m in mols:
 descriptor_names = ['qed', 'MolLogP']
 descriptor_calculator = MoleculeDescriptors.MolecularDescriptorCalculator(descriptor_names)
 descriptors = pd.DataFrame(
-    [descriptor_calculator.CalcDescriptors(mol) for mol in mols[:110]],
+    [descriptor_calculator.CalcDescriptors(mol) for mol in mols[:1000]],
     columns=descriptor_names
 )
 properties=np.array(descriptors)
-data=np.array(maccskeys[:110])
+
+# fix data
+def foo(data):
+    x = data[0]
+    y = data[1]
+    y = y - 3 * np.arctanh(x)
+    return [x,y]
+
+properties = np.array(list(map(foo, properties)))
+
+data=np.array(maccskeys[:1000])
 
 features_observed = data[:10]
 features_unchecked = data[10:]
@@ -50,6 +53,7 @@ features_unchecked = data[10:]
 properties_observed = properties[:10]
 properties_unchecked = properties[10:]
 
+smiles_observed = df.smiles[:10].to_numpy()
 
 def build_model(prediction_model, x_train, y_train):
     if prediction_model == 'RF':
@@ -94,30 +98,32 @@ def recommend_next(prediction_model, features_observed, features_unchecked, prop
 
     return m, predicted_properties, SN ,maccskey
 
-num_loop=10
+num_loop=100
+l = 0
+while l < num_loop:
+    print('Exploration:', l)
+    m, predicted_properties, SN, maccskey = recommend_next('RF', features_observed, features_unchecked,
+                                                           properties_observed)
+    print('predicted_properties', predicted_properties, 'Stein novelty', SN)
+    # Add the experimental or simulation result of the recommended data
+    new_smiles = Chem.MolToSmiles(m)
+    if new_smiles in smiles_observed:
+        continue
+    features_observed = np.append(features_observed, [maccskey], axis=0)
+    new_properties_abserved = descriptor_calculator.CalcDescriptors(m)
+    # fix data
+    properties_observed = np.append(properties_observed, [foo(new_properties_abserved)], axis = 0)
+    smiles_observed = np.append(smiles_observed, [new_smiles], axis = 0)
+    l += 1
 
-for l in range(num_loop):
-        print('Exploration:', l)
-        m, predicted_properties, SN, maccskey = recommend_next('RF', features_observed, features_unchecked, properties_observed)
-        print('predicted_properties', predicted_properties, 'Stein novelty', SN)
 
-        #Add the experimental or simulation result of the recommended data
-        features_observed = np.append(features_observed, [maccskey], axis = 0)
-
-        new_properties_abserved = descriptor_calculator.CalcDescriptors(m)
-        properties_observed = np.append(properties_observed, [new_properties_abserved], axis = 0)
-
-        #Removed the recommend data
-        # features_unchecked = np.delete(features_unchecked, recommended_index, axis = 0)
-        # properties_unchecked = np.delete(properties_unchecked, recommended_index, axis = 0)
-
-        plt.scatter(properties_observed[:-1, 0], properties_observed[:-1, 1], label='Prev data')
-        plt.scatter([predicted_properties[0]], [predicted_properties[1]], label='Predicted properties')
-        plt.scatter(properties_observed[-1:, 0], properties_observed[-1:, 1], label='Experimental data')
-        plt.xlabel('qed')
-        plt.ylabel('MolLogP')
-        plt.xlim([0, 1.5])
-        plt.ylim([0, 10])
-        plt.legend()
-        plt.savefig('fig/observed_data_iteration' + str(l) + '.png', dpi=300)
-        plt.close()
+plt.scatter(properties_observed[:10, 0], properties_observed[:10, 1], label='Initial data')
+plt.scatter(properties_observed[10:, 0], properties_observed[10:, 1], label='Experimental data')
+plt.title("n=100 generation=100")
+plt.xlabel('qed')
+plt.ylabel('MolLogP')
+plt.xlim((0, 1))
+plt.ylim((-6, 8))
+plt.legend()
+plt.savefig('fig_n' + str(num_loop) + '_g100.png', dpi=300)
+plt.close()
