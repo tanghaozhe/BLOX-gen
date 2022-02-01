@@ -1,7 +1,5 @@
 import nltk
-
 import numpy as np
-
 import zinc_grammar
 
 

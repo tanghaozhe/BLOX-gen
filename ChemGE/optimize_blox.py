@@ -1,18 +1,16 @@
 from __future__ import print_function
-import argparse
 import copy
 import nltk
-import threading
-
 import numpy as np
 from rdkit import Chem
 from rdkit import rdBase
-
 from ChemGE import zinc_grammar,cfg_util,score_util
-
+import json
 rdBase.DisableLog('rdApp.error')
 GCFG = zinc_grammar.GCFG
 
+with open("config.json", "r") as f:
+    config = json.load(f)
 
 def CFGtoGene(prod_rules, max_len=-1):
     gene = []
@@ -73,29 +71,8 @@ best_smiles = ""
 all_smiles = []
 
 
-def current_best():
-    global elapsed_min
-    global best_score
-    global best_smiles
-    global mean_score
-    global min_score
-    global std_score
-    global all_smiles
-    elapsed_min += 1
-    print("${},{},{},{}"
-          .format(elapsed_min, best_score, best_smiles, len(all_smiles)))
-    # t = threading.Timer(60, current_best, [])
-    # t.start()
-
 
 def run_optimize(sc_properties_observed, model_list, sc_property):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--smifile', default='ChemGE/250k_rndm_zinc_drugs_clean.smi')
-    parser.add_argument('--seed', type=int, default=0)
-    args = parser.parse_args()
-
-    # np.random.seed(args.seed)
-
     global best_smiles
     global best_score
     global all_smiles
@@ -107,7 +84,7 @@ def run_optimize(sc_properties_observed, model_list, sc_property):
 
     # initialize population
     seed_smiles = []
-    with open(args.smifile) as f:
+    with open(config["data_dir"]) as f:
         for line in f:
             smiles = line.rstrip()
             seed_smiles.append(smiles)
@@ -125,11 +102,8 @@ def run_optimize(sc_properties_observed, model_list, sc_property):
 
     population = sorted(population, key=lambda x: x[0], reverse=True)[:N_mu]
 
-    # t = threading.Timer(60, current_best, [])
-    # t.start()
-    # print("Start!")
     all_smiles = [p[1] for p in population]
-    for generation in range(50):
+    for generation in range(config["generation_num"]):
         scores = [p[0] for p in population]
         mean_score = np.mean(scores)
         min_score = np.min(scores)
