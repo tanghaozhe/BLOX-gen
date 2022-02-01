@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import urllib.request 
+import json
 from rdkit import Chem, rdBase
 from rdkit.Chem import AllChem, Draw, Descriptors, PandasTools,MolFromSmiles
 from rdkit.ML.Descriptors import MoleculeDescriptors
@@ -12,16 +12,19 @@ import sys
 sys.path.append("./ChemGE")
 from ChemGE import optimize_blox
 
-df = pd.read_csv('ZINC_first_1000.smi',names=['smiles'])
+with open("config.json", "r") as f:
+    config = json.load(f)
+
+df = pd.read_csv(config["data_dir"], names=['smiles'])
 PandasTools.AddMoleculeColumnToFrame(frame=df, smilesCol='smiles')
 
-none_list=[]
+none_list = []
 for i in range(df.shape[0]):
     if Chem.MolFromSmiles(df['smiles'][i]) is None:
         none_list.append(i)
         
-df=df.drop(none_list)
-mols=[Chem.MolFromSmiles(smile) for smile in df['smiles']]
+df = df.drop(none_list)
+mols = [Chem.MolFromSmiles(smile) for smile in df['smiles']]
 
 maccskeys = []
 for m in mols:
@@ -32,20 +35,10 @@ descriptor_names = ['qed', 'MolLogP']
 descriptor_calculator = MoleculeDescriptors.MolecularDescriptorCalculator(descriptor_names)
 descriptors = pd.DataFrame(
     [descriptor_calculator.CalcDescriptors(mol) for mol in mols[:1000]],
-    columns=descriptor_names
+    columns = descriptor_names
 )
-properties=np.array(descriptors)
-
-# fix data
-def foo(data):
-    x = data[0]
-    y = data[1]
-    y = y - 3 * np.arctanh(x)
-    return [x,y]
-
-properties = np.array(list(map(foo, properties)))
-
-data=np.array(maccskeys[:1000])
+properties = np.array(descriptors)
+data = np.array(maccskeys[:1000])
 
 features_observed = data[:10]
 features_unchecked = data[10:]
@@ -98,7 +91,7 @@ def recommend_next(prediction_model, features_observed, features_unchecked, prop
 
     return m, predicted_properties, SN ,maccskey
 
-num_loop=100
+num_loop=config["loop_num"]
 l = 0
 while l < num_loop:
     print('Exploration:', l)
@@ -111,8 +104,7 @@ while l < num_loop:
         continue
     features_observed = np.append(features_observed, [maccskey], axis=0)
     new_properties_abserved = descriptor_calculator.CalcDescriptors(m)
-    # fix data
-    properties_observed = np.append(properties_observed, [foo(new_properties_abserved)], axis = 0)
+    properties_observed = np.append(properties_observed, [new_properties_abserved], axis = 0)
     smiles_observed = np.append(smiles_observed, [new_smiles], axis = 0)
     l += 1
 
