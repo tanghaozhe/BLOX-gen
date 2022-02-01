@@ -1,21 +1,14 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import pandas as pd
-import urllib.request 
-from rdkit import Chem, rdBase
-from rdkit.Chem import AllChem, Draw, Descriptors, PandasTools
+from rdkit import Chem
+from rdkit.Chem import AllChem, PandasTools
 from rdkit.ML.Descriptors import MoleculeDescriptors
 from sklearn.model_selection import train_test_split
 import matplotlib
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from multiprocessing import Pool
-import copy as cp
-import random
 from sklearn.model_selection import GridSearchCV
-import sys, csv, time, argparse
 
 
 df = pd.read_csv('ZINC_first_1000.smi',names=['smiles'])
@@ -37,11 +30,21 @@ for m in mols:
 descriptor_names = ['qed', 'MolLogP']
 descriptor_calculator = MoleculeDescriptors.MolecularDescriptorCalculator(descriptor_names)
 descriptors = pd.DataFrame(
-    [descriptor_calculator.CalcDescriptors(mol) for mol in mols[:110]],
+    [descriptor_calculator.CalcDescriptors(mol) for mol in mols[:1000]],
     columns=descriptor_names
 )
 properties=np.array(descriptors)
-data=np.array(maccskeys[:110])
+
+# fix data
+def foo(data):
+    x = data[0]
+    y = data[1]
+    y = y - 3 * np.arctanh(x)
+    return [x,y]
+
+properties = np.array(list(map(foo, properties)))
+
+data=np.array(maccskeys[:1000])
 
 features_observed = data[:10]
 features_unchecked = data[10:]
@@ -77,7 +80,6 @@ def stein_novelty(point, data_list, sigma):
 # sc_predicted_properties_list = sc_property.transform(predicted_properties_list)
 # stein_novelty(sc_predicted_properties_list[0], sc_properties_observed, sigma=1)
 
-
 def recommend_next(prediction_model, features_observed, features_unchecked, properties_observed):
     sc = StandardScaler()
     sc.fit(features_observed)
@@ -95,6 +97,7 @@ def recommend_next(prediction_model, features_observed, features_unchecked, prop
     predicted_properties_list = []
     for d in range(2):
         predicted_properties_list.append(model_list[d].predict(sc_features_unchecked))
+
     predicted_properties_list = np.array(predicted_properties_list).T
 
     # Calc. Stein Novelty
@@ -106,7 +109,7 @@ def recommend_next(prediction_model, features_observed, features_unchecked, prop
 
     return maximum_index, predicted_properties_list[maximum_index], sn_data[maximum_index]
 
-num_loop=10
+num_loop=100
 
 for l in range(num_loop):
         print('Exploration:', l)
@@ -124,10 +127,18 @@ for l in range(num_loop):
         # plt.scatter(properties_observed[:-1, 0], properties_observed[:-1, 1], label='Prev data')
         # plt.scatter([predicted_properties[0]], [predicted_properties[1]], label='Predicted properties')
         # plt.scatter(properties_observed[-1:, 0], properties_observed[-1:, 1], label='Experimental data')
-        # plt.xlabel('Wave length (nm)')
-        # plt.ylabel('Intensity')
-        # # plt.xlim([100, 500])
-        # # plt.ylim([0, 1.5])
+        # plt.xlim((0, 1))
+        # plt.ylim((-6, 8))
+        # plt.xlabel('QED')
+        # plt.ylabel('MolLogP')
         # plt.legend()
         # plt.savefig('fig/observed_data_iteration' + str(l) + '.png', dpi=300)
         # plt.close()
+plt.figure(figsize=(6, 6))
+plt.scatter(properties_observed[:, 0], properties_observed[:, 1])
+plt.xlim((0, 1))
+plt.ylim((-6, 8))
+plt.xlabel('QED')
+plt.ylabel('MolLogP')
+plt.savefig('fig_1000.png', dpi=300)
+plt.close()
