@@ -1,5 +1,5 @@
 {
   "data_dir": "ZINC_first_1000.smi",
-  "generation_num": 50,
+  "generation_num": 100,
   "loop_num": 10
 }
