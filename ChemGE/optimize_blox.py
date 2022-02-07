@@ -4,7 +4,7 @@ import nltk
 import numpy as np
 from rdkit import Chem
 from rdkit import rdBase
-from ChemGE import zinc_grammar,cfg_util,score_util
+import zinc_grammar,cfg_util,score_util
 import json
 rdBase.DisableLog('rdApp.error')
 GCFG = zinc_grammar.GCFG
