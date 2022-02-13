@@ -10,14 +10,6 @@ PandasTools.AddMoleculeColumnToFrame(frame=df, smilesCol='smiles')
 df['QED'] = df.ROMol.map(QED.qed)
 df['MolLogP'] = df.ROMol.map(Descriptors.MolLogP)
 
-def fix_data(data):
-    x = data[0]
-    y = data[1]
-    p = np.arctanh(x)
-    y = y - 3*p
-    return pd.Series([x, y])
-
-df[['QED_fixed','MolLogP_fixed']] = df[['QED','MolLogP']].apply(fix_data,axis=1)
 plt.figure(figsize=(12, 6))
 
 plt.subplot(1, 2, 1)

@@ -59,19 +59,6 @@ def build_model(prediction_model, x_train, y_train):
 
 parallel = 1
 
-
-def hesgau(x, y, sigma):
-    dim = len(x)
-    dist = np.sum(np.power(x-y, 2))
-    return (dim/sigma - dist/sigma**2)*np.exp(-dist/(2*sigma))
-
-def stein_novelty(point, data_list, sigma):
-    n = len(data_list)
-    score = np.sum([hesgau(point, data_list[k,:], sigma) for k in range(n)])
-    score = score/(n*(n+1)/2)
-    return -score
-
-
 def recommend_next(prediction_model, features_observed, features_unchecked, properties_observed):
     sc_property = StandardScaler()
     sc_property.fit(properties_observed)
@@ -97,7 +84,6 @@ while l < num_loop:
     print('Exploration:', l)
     m, predicted_properties, SN, maccskey = recommend_next('RF', features_observed, features_unchecked,
                                                            properties_observed)
-    print('predicted_properties', predicted_properties, 'Stein novelty', SN)
     # Add the experimental or simulation result of the recommended data
     new_smiles = Chem.MolToSmiles(m)
     if new_smiles in smiles_observed:
@@ -111,11 +97,33 @@ while l < num_loop:
 
 plt.scatter(properties_observed[:10, 0], properties_observed[:10, 1], label='Initial data')
 plt.scatter(properties_observed[10:, 0], properties_observed[10:, 1], label='Experimental data')
-plt.title("n=100 generation=100")
+plt.title(f"n={config['loop_num']} generation={config['generation_num']}")
 plt.xlabel('qed')
 plt.ylabel('MolLogP')
 plt.xlim((0, 1))
 plt.ylim((-6, 8))
 plt.legend()
-plt.savefig(f"./fig/fig_n{config['loop_num']}_g{config['generation_num']}.png", dpi=300)
+plt.savefig(f"./fig/random_n{config['loop_num']}_g{config['generation_num']}.png", dpi=300)
 plt.close()
+
+df_properties_generated = pd.DataFrame(properties_observed[10:])
+df_properties_generated.to_csv("./results/df_random_properties_generated.csv", header=False, index=0)
+
+def hesgau(x, y, sigma):
+    dim = len(x)
+    dist = np.sum(np.power(x-y, 2))
+    return (dim/sigma - dist/sigma**2)*np.exp(-dist/(2*sigma))
+
+
+def SD(data_list, sigma):
+    n = len(data_list)
+    if n <= 1:
+        return -1
+    z0 = 0
+
+    for k in range(n):
+        #print(k)
+        for l in range(k+1,n):
+            z0 = z0 + hesgau(data_list[l,:], data_list[k,:], sigma)
+    steind = z0/(n*(n-1)/2.)
+    return steind
