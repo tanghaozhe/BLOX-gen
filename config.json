@@ -1,5 +1,5 @@
 {
-  "data_dir": "250k_zinc_first1000.csv",
+  "data_dir": "./data/250k_zinc_first1000.csv",
   "generation_num": 300,
   "loop_num": 100
 }
