@@ -6,6 +6,8 @@ from rdkit import Chem
 from rdkit import rdBase
 import zinc_grammar,cfg_util,score_util
 import json
+import math
+import random
 rdBase.DisableLog('rdApp.error')
 GCFG = zinc_grammar.GCFG
 
@@ -128,6 +130,15 @@ def run_optimize(sc_properties_observed, model_list, sc_property):
                 all_smiles.append(c_smiles)
 
         population.extend(new_population)
-        population = sorted(population,
+
+        if config["evolution_mode"] == "random":
+            random.shuffle(population)
+            population_modified = [x for x in population if not math.isclose(x[0], -1e10)]+[x for x in population if math.isclose(x[0], -1e10)]
+            population = population_modified[:N_mu]
+        elif config["evolution_mode"] == "normal":
+            population = sorted(population,
                             key=lambda x: x[0], reverse=True)[:N_mu]
+        else:
+            raise Exception('evolution_mode is invalid.')
+    
     return population[0][1], population[0][0]

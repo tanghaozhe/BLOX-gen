@@ -46,8 +46,7 @@ def calc_score(smiles,sc_properties_observed,model_list, sc_property):
             predicted_properties.append(model_list[d].predict([maccskey])[0])
         sc_predicted_properties = sc_property.transform([predicted_properties])[0]
         sn = stein_novelty(sc_predicted_properties, sc_properties_observed, sigma=1)
-        # return sn
-        return 1
+        return sn
     else:
         return -1e10
 

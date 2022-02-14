@@ -2,3 +2,4 @@
 *.png
 fig/
 .idea/
+.results/
