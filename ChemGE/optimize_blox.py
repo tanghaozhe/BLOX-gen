@@ -131,11 +131,7 @@ def run_optimize(sc_properties_observed, model_list, sc_property):
 
         population.extend(new_population)
 
-        if config["evolution_mode"] == "random":
-            random.shuffle(population)
-            population_modified = [x for x in population if not math.isclose(x[0], -1e10)]+[x for x in population if math.isclose(x[0], -1e10)]
-            population = population_modified[:N_mu]
-        elif config["evolution_mode"] == "normal":
+        if config["evolution_mode"] == "normal":
             population = sorted(population,
                             key=lambda x: x[0], reverse=True)[:N_mu]
         else:

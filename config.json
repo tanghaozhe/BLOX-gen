@@ -3,5 +3,5 @@
   "parallel": -1,
   "generation_num": 100,
   "loop_num": 300,
-  "evolution_mode": "random"
+  "evolution_mode": "normal"
 }
